@@ -127,6 +127,43 @@ func TestVerify(t *testing.T) {
 	testVerify(t, ModeArgon2i)
 }
 
+func TestFlagClearPassword(t *testing.T) {
+	ctx := NewContext()
+	ctx.Flags = FlagClearMemory
+	password := []byte("somepassword")
+	salt := []byte("somesalt")
+
+	ctx.Hash(password, salt)
+	if !bytes.Equal([]byte("somepassword"), password) {
+		t.Fatalf("Hash: password slice is modified")
+	}
+
+	ctx.Flags = FlagClearMemory | FlagClearPassword
+	ctx.Hash(password, salt)
+	if !bytes.Equal(make([]byte, len(password)), password) {
+		t.Fatalf("Hash: password slice is not cleared")
+	}
+}
+
+func TestFlagClearSecret(t *testing.T) {
+	ctx := NewContext()
+	ctx.Flags = FlagClearMemory
+	ctx.Secret = []byte("somesecret")
+	password := []byte("somepassword")
+	salt := []byte("somesalt")
+
+	ctx.Hash(password, salt)
+	if !bytes.Equal([]byte("somesecret"), ctx.Secret) {
+		t.Fatalf("Hash: secret slice is modified")
+	}
+
+	ctx.Flags = FlagClearMemory | FlagClearSecret
+	ctx.Hash(password, salt)
+	if !bytes.Equal(make([]byte, len(ctx.Secret)), ctx.Secret) {
+		t.Fatalf("Hash: secret slice is not cleared")
+	}
+}
+
 func testVerify(t *testing.T, mode Mode) {
 	ctx := NewContext()
 	ctx.Mode = mode

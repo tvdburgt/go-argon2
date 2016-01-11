@@ -11,6 +11,7 @@ import (
 )
 
 type Mode int
+type Flags int
 
 // Error propagated from Argon2.
 // See argon2.h for a list of error codes.
@@ -21,14 +22,21 @@ const (
 	ModeArgon2i Mode = C.Argon2_i
 )
 
+const (
+	FlagClearPassword Flags = C.ARGON2_FLAG_CLEAR_PASSWORD
+	FlagClearSecret   Flags = C.ARGON2_FLAG_CLEAR_SECRET
+	FlagClearMemory   Flags = C.ARGON2_FLAG_CLEAR_MEMORY
+)
+
 type Context struct {
 	Iterations     int    // number of iterations (t_cost)
 	Memory         int    // memory usage in KiB (m_cost)
 	Parallelism    int    // number of parallel threads
-	Secret         []byte // optional
-	AssociatedData []byte // optional
 	HashLen        int    // length of hash output
 	Mode           Mode   // argon2 mode
+	Secret         []byte // optional
+	AssociatedData []byte // optional
+	Flags          Flags  // optional
 
 	hash     []byte
 	password []byte
@@ -71,6 +79,10 @@ func (ctx *Context) context() (*C.argon2_context, error) {
 	if len(ctx.AssociatedData) > 0 {
 		c.ad = (*C.uint8_t)(&ctx.AssociatedData[0])
 		c.adlen = C.uint32_t(len(ctx.AssociatedData))
+	}
+
+	if ctx.Flags != 0 {
+		c.flags = C.uint32_t(ctx.Flags)
 	}
 
 	return c, nil
