@@ -10,7 +10,11 @@ import (
 	"fmt"
 )
 
-type Mode C.argon2_type
+type Mode int
+
+// Error propagated from Argon2.
+// See argon2.h for a list of error codes.
+type Argon2Error int
 
 const (
 	ModeArgon2d Mode = C.Argon2_d
@@ -24,15 +28,27 @@ type Context struct {
 	Secret         []byte // optional
 	AssociatedData []byte // optional
 	HashLen        int    // length of hash output
-	Mode           Mode   // argon2.ModeArgon2d or argon2.ModeArgon2i
+	Mode           Mode   // argon2 mode
 
 	hash     []byte
 	password []byte
 	salt     []byte
 }
 
+func (e Argon2Error) Error() string {
+	msg := C.error_message(C.int(e))
+	return fmt.Sprintf("argon2: %s", C.GoString(msg))
+}
+
 // Constructs argon2_context from underlying context
-func (ctx *Context) context() *C.argon2_context {
+func (ctx *Context) context() (*C.argon2_context, error) {
+	if len(ctx.password) == 0 {
+		return nil, errors.New("argon2: password is nil or empty")
+	}
+	if len(ctx.salt) == 0 {
+		return nil, errors.New("argon2: salt is nil or empty")
+	}
+
 	c := &C.argon2_context{
 		out:     (*C.uint8_t)(&ctx.hash[0]),
 		outlen:  C.uint32_t(ctx.HashLen),
@@ -47,17 +63,17 @@ func (ctx *Context) context() *C.argon2_context {
 		flags:   C.ARGON2_DEFAULT_FLAGS,
 	}
 
-	if ctx.Secret != nil {
+	if len(ctx.Secret) > 0 {
 		c.secret = (*C.uint8_t)(&ctx.Secret[0])
 		c.secretlen = C.uint32_t(len(ctx.Secret))
 	}
 
-	if ctx.AssociatedData != nil {
+	if len(ctx.AssociatedData) > 0 {
 		c.ad = (*C.uint8_t)(&ctx.AssociatedData[0])
 		c.adlen = C.uint32_t(len(ctx.AssociatedData))
 	}
 
-	return c
+	return c, nil
 }
 
 func NewContext() *Context {
@@ -71,21 +87,18 @@ func NewContext() *Context {
 }
 
 func (ctx *Context) Hash(password, salt []byte) ([]byte, error) {
-	if password == nil || len(password) == 0 {
-		return nil, errors.New("argon2: password is nil or empty")
-	}
-
-	if salt == nil || len(salt) == 0 {
-		return nil, errors.New("argon2: salt is nil or empty")
-	}
-
 	ctx.hash = make([]byte, ctx.HashLen)
 	ctx.password = password
 	ctx.salt = salt
-	result := C.argon2_core(ctx.context(), C.argon2_type(ctx.Mode))
 
+	c, err := ctx.context()
+	if err != nil {
+		return nil, err
+	}
+
+	result := C.argon2_core(c, C.argon2_type(ctx.Mode))
 	if result != C.ARGON2_OK {
-		return nil, fmt.Errorf("argon2: operation failed (error code: %d)", result)
+		return nil, Argon2Error(result)
 	}
 
 	return ctx.hash, nil
@@ -95,26 +108,32 @@ func (ctx *Context) Verify(hash, password, salt []byte) (bool, error) {
 	if hash == nil || len(hash) == 0 {
 		return false, errors.New("argon2: hash is nil or empty")
 	}
-	if password == nil || len(password) == 0 {
-		return false, errors.New("argon2: password is nil or empty")
-	}
-	if salt == nil || len(salt) == 0 {
-		return false, errors.New("argon2: salt is nil or empty")
-	}
 
 	var result C.int
 	ctx.password = password
 	ctx.salt = salt
 
+	c, err := ctx.context()
+	if err != nil {
+		return false, err
+	}
+
 	switch ctx.Mode {
 	case ModeArgon2i:
-		result = C.verify_i(ctx.context(), C.CString(string(hash)))
+		result = C.verify_i(c, C.CString(string(hash)))
 	case ModeArgon2d:
-		result = C.verify_d(ctx.context(), C.CString(string(hash)))
+		result = C.verify_d(c, C.CString(string(hash)))
 	default:
 		return false, errors.New("argon2: invalid mode")
 	}
 
-	// TODO: additional check for error codes
-	return result == 1, nil
+	if result == 1 {
+		return true, nil
+	}
+
+	if result == C.ARGON2_OK {
+		return false, nil
+	}
+
+	return false, Argon2Error(result)
 }

@@ -86,17 +86,17 @@ func TestArgon2d(t *testing.T) {
 
 func TestHashNil(t *testing.T) {
 	ctx := NewContext()
-	password := make([]byte, 16)
-	salt := make([]byte, 16)
+	password := make([]byte, 2)
+	salt := make([]byte, 2)
 
 	_, err := ctx.Hash(nil, salt)
 	if err == nil {
-		t.Error("expected err (password = nil)")
+		t.Error("Hash: expected err (password = nil)")
 	}
 
 	_, err = ctx.Hash(password, nil)
 	if err == nil {
-		t.Error("expected err (salt = nil)")
+		t.Error("Hash: expected err (salt = nil)")
 	}
 }
 
@@ -162,5 +162,11 @@ func testVerify(t *testing.T, mode Mode) {
 	}
 	if ok {
 		t.Error("Verify returned true with incorrect salt")
+	}
+
+	// Test error (salt too short)
+	_, err = ctx.Verify(hash, password, []byte("x"))
+	if err == nil {
+		t.Errorf("Verify: err is nil")
 	}
 }
