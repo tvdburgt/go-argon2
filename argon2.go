@@ -2,68 +2,88 @@ package argon2
 
 // #cgo CFLAGS: -I${SRCDIR}/libargon2/src
 // #cgo LDFLAGS: -L${SRCDIR}/libargon2 -largon2
+// #include <stdlib.h>
 // #include "argon2.h"
 import "C"
 
 import (
+	"bytes"
+	"crypto/subtle"
 	"errors"
 	"fmt"
-)
-
-type Mode int
-type Flags int
-
-// Error propagated from Argon2.
-// See argon2.h for a list of error codes.
-type Argon2Error int
-
-const (
-	ModeArgon2d Mode = C.Argon2_d
-	ModeArgon2i Mode = C.Argon2_i
+	"strings"
+	"unsafe"
 )
 
 const (
-	FlagClearPassword Flags = C.ARGON2_FLAG_CLEAR_PASSWORD
-	FlagClearSecret   Flags = C.ARGON2_FLAG_CLEAR_SECRET
-	FlagClearMemory   Flags = C.ARGON2_FLAG_CLEAR_MEMORY
+	ModeArgon2d int = C.Argon2_d
+	ModeArgon2i int = C.Argon2_i
 )
 
-type Context struct {
-	Iterations     int    // number of iterations (t_cost)
-	Memory         int    // memory usage in KiB (m_cost)
-	Parallelism    int    // number of parallel threads
-	HashLen        int    // length of hash output
-	Mode           Mode   // argon2 mode
-	Secret         []byte // optional
-	AssociatedData []byte // optional
-	Flags          Flags  // optional
+const (
+	FlagClearPassword int = C.ARGON2_FLAG_CLEAR_PASSWORD
+	FlagClearSecret   int = C.ARGON2_FLAG_CLEAR_SECRET
+	FlagClearMemory   int = C.ARGON2_FLAG_CLEAR_MEMORY
+)
 
-	hash     []byte
-	password []byte
-	salt     []byte
-}
+var (
+	ErrContext  = errors.New("argon2: invalid context")
+	ErrPassword = errors.New("argon2: password is nil or empty")
+	ErrSalt     = errors.New("argon2: salt is nil or empty")
+)
 
-func (e Argon2Error) Error() string {
+// Error is the internal error propagated from the Argon2 library.
+// See argon2.h for a list of corresponding error codes.
+type Error int
+
+func (e Error) Error() string {
 	msg := C.error_message(C.int(e))
 	return fmt.Sprintf("argon2: %s", C.GoString(msg))
 }
 
-// Constructs argon2_context from underlying context
-func (ctx *Context) context() (*C.argon2_context, error) {
-	if len(ctx.password) == 0 {
-		return nil, errors.New("argon2: password is nil or empty")
+type Context struct {
+	Iterations  int // number of iterations (t_cost)
+	Memory      int // memory usage in KiB (m_cost)
+	Parallelism int // number of parallel threads
+
+	HashLen int // desired hash output length
+	Mode    int // ModeArgon2d or ModeArgon2i
+
+	Secret         []byte // optional
+	AssociatedData []byte // optional
+	Flags          int    // optional
+}
+
+// NewContext initializes a new Argon2 context with reasonable defaults.
+func NewContext() *Context {
+	return &Context{
+		Iterations:  3,
+		Memory:      1 << 12, // 4 MiB
+		Parallelism: 1,
+		HashLen:     32,
+		Mode:        ModeArgon2i,
 	}
-	if len(ctx.salt) == 0 {
-		return nil, errors.New("argon2: salt is nil or empty")
+}
+
+// init initializes an argon2_context struct instance and allocates a hash
+// slice.
+func (ctx *Context) init(password, salt []byte) (c *C.argon2_context, hash []byte, err error) {
+	if len(password) == 0 {
+		return nil, nil, ErrPassword
+	}
+	if len(salt) == 0 {
+		return nil, nil, ErrSalt
 	}
 
-	c := &C.argon2_context{
-		out:     (*C.uint8_t)(&ctx.hash[0]),
+	hash = make([]byte, ctx.HashLen)
+
+	c = &C.argon2_context{
+		out:     (*C.uint8_t)(&hash[0]),
 		outlen:  C.uint32_t(ctx.HashLen),
-		pwd:     (*C.uint8_t)(&ctx.password[0]),
-		pwdlen:  C.uint32_t(len(ctx.password)),
-		salt:    (*C.uint8_t)(&ctx.salt[0]),
-		saltlen: C.uint32_t(len(ctx.salt)),
+		pwd:     (*C.uint8_t)(&password[0]),
+		pwdlen:  C.uint32_t(len(password)),
+		salt:    (*C.uint8_t)(&salt[0]),
+		saltlen: C.uint32_t(len(salt)),
 		t_cost:  C.uint32_t(ctx.Iterations),
 		m_cost:  C.uint32_t(ctx.Memory),
 		lanes:   C.uint32_t(ctx.Parallelism),
@@ -85,67 +105,107 @@ func (ctx *Context) context() (*C.argon2_context, error) {
 		c.flags = C.uint32_t(ctx.Flags)
 	}
 
-	return c, nil
+	return
 }
 
-func NewContext() *Context {
-	return &Context{
-		Iterations:  3,
-		Memory:      1 << 12, // 4 MiB
-		Parallelism: 1,
-		HashLen:     32,
-		Mode:        ModeArgon2i,
-	}
-}
-
-func (ctx *Context) Hash(password, salt []byte) ([]byte, error) {
-	ctx.hash = make([]byte, ctx.HashLen)
-	ctx.password = password
-	ctx.salt = salt
-
-	c, err := ctx.context()
+func (ctx *Context) hash(password, salt []byte) ([]byte, error) {
+	c, hash, err := ctx.init(password, salt)
 	if err != nil {
 		return nil, err
 	}
 
 	result := C.argon2_core(c, C.argon2_type(ctx.Mode))
 	if result != C.ARGON2_OK {
-		return nil, Argon2Error(result)
+		return nil, Error(result)
 	}
 
-	return ctx.hash, nil
+	return hash, nil
 }
 
-func (ctx *Context) Verify(hash, password, salt []byte) (bool, error) {
-	if hash == nil || len(hash) == 0 {
+func Hash(ctx *Context, password, salt []byte) ([]byte, error) {
+	if ctx == nil {
+		return nil, ErrContext
+	}
+	return ctx.hash(password, salt)
+}
+
+func HashEncoded(ctx *Context, password, salt []byte) (string, error) {
+	if ctx == nil {
+		return "", ErrContext
+	}
+	c, _, err := ctx.init(password, salt)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO: figure out size
+	s := make([]byte, 200)
+
+	result := C.argon2_hash(
+		c.t_cost, c.m_cost, c.threads,
+		unsafe.Pointer(c.pwd), C.size_t(c.pwdlen),
+		unsafe.Pointer(c.salt), C.size_t(c.saltlen),
+		nil, C.size_t(c.outlen),
+		(*C.char)(unsafe.Pointer(&s[0])), C.size_t(len(s)),
+		C.argon2_type(ctx.Mode))
+
+	if result != C.ARGON2_OK {
+		return "", Error(result)
+	}
+
+	// Strip trailing null byte(s)
+	s = bytes.TrimRight(s, "\x00")
+	return string(s), nil
+}
+
+func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
+	if ctx == nil {
+		return false, ErrContext
+	}
+	if len(hash) == 0 {
 		return false, errors.New("argon2: hash is nil or empty")
 	}
 
-	var result C.int
-	ctx.password = password
-	ctx.salt = salt
-
-	c, err := ctx.context()
+	hash2, err := ctx.hash(password, salt)
 	if err != nil {
 		return false, err
 	}
 
-	switch ctx.Mode {
-	case ModeArgon2i:
-		result = C.verify_i(c, C.CString(string(hash)))
-	case ModeArgon2d:
-		result = C.verify_d(c, C.CString(string(hash)))
-	default:
-		return false, errors.New("argon2: invalid mode")
+	// verify_i/verify_d doesn't seem to be using constant time comparison...
+	return subtle.ConstantTimeCompare(hash, hash2) == 1, nil
+}
+
+func VerifyEncoded(s string, password []byte) (bool, error) {
+	mode, err := getMode(s)
+	if err != nil {
+		return false, err
 	}
 
-	if result == 1 {
+	cs := C.CString(s)
+	defer C.free(unsafe.Pointer(cs))
+
+	result := C.argon2_verify(
+		cs,
+		unsafe.Pointer(&password[0]),
+		C.size_t(len(password)),
+		C.argon2_type(mode))
+
+	if result == C.ARGON2_OK {
 		return true, nil
 	}
 
-	if result == C.ARGON2_OK {
-		return false, nil
-	}
+	// argon2_verify always seems to return an error in this case...
+	return false, Error(result)
+}
 
-	return false, Argon2Error(result)
+// getMode tries to extract the mode from an Argon2 encoded string.
+func getMode(s string) (int, error) {
+	switch {
+	case strings.HasPrefix(s, "$argon2d"):
+		return ModeArgon2d, nil
+	case strings.HasPrefix(s, "$argon2i"):
+		return ModeArgon2i, nil
+	default:
+		return -1, errors.New("argon2: unable to extract mode from encoded string")
+	}
 }

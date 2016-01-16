@@ -3,128 +3,84 @@ package argon2
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"testing"
 )
 
-func ExampleContext_Hash() {
+func TestHash(t *testing.T) {
+	vectors := []struct {
+		ctx      *Context
+		password []byte
+		salt     []byte
+		hash     string
+	}{
+
+		{
+			&Context{
+				Iterations:     3,
+				Memory:         1 << 5,
+				Parallelism:    4,
+				Secret:         bytes.Repeat([]byte{3}, 8),
+				AssociatedData: bytes.Repeat([]byte{4}, 12),
+				HashLen:        32,
+				Mode:           ModeArgon2i,
+			},
+			bytes.Repeat([]byte{1}, 32),
+			bytes.Repeat([]byte{2}, 16),
+			"87aeedd6517ab830cd9765cd8231abb2e647a5dee08f7c05e02fcb763335d0fd",
+		},
+		{
+			&Context{
+				Iterations:     3,
+				Memory:         1 << 5,
+				Parallelism:    4,
+				Secret:         bytes.Repeat([]byte{3}, 8),
+				AssociatedData: bytes.Repeat([]byte{4}, 12),
+				HashLen:        32,
+				Mode:           ModeArgon2d,
+			},
+			bytes.Repeat([]byte{1}, 32),
+			bytes.Repeat([]byte{2}, 16),
+			"96a9d4e5a1734092c85e29f410a45914a5dd1f5cbf08b2670da68a0285abf32b",
+		},
+	}
+
+	for i, v := range vectors {
+		expected, _ := hex.DecodeString(v.hash)
+		hash, err := Hash(v.ctx, v.password, v.salt)
+		if err != nil {
+			t.Errorf("received error: %s (%d)", i, err)
+		}
+		if !bytes.Equal(hash, expected) {
+			t.Errorf("assertion failed (%d: %s)", i, v.hash)
+		}
+	}
+
+}
+
+func TestHashEncoded(t *testing.T) {
 	ctx := NewContext()
-	hash, _ := ctx.Hash([]byte("hunter2"), []byte("somesalt"))
-	fmt.Printf("%x\n", hash)
-	// Output:
-	// bfedbc29c9aeb504765c48ec8e7a63f1cdd89f2830e3ab2f26d68a45263ffcae
-}
-
-func Example() {
-	password := []byte("password")
-	salt := make([]byte, 16)
-	copy(salt, []byte("somesalt"))
-
-	ctx := Context{
-		Iterations:  2,
-		Memory:      1 << 16,
-		Parallelism: 4,
-		HashLen:     32,
-		Mode:        ModeArgon2i,
-	}
-
-	hash, _ := ctx.Hash(password, salt)
-	fmt.Printf("%x\n", hash)
-	// Output:
-	// 4162f32384d8f4790bd994cb73c83a4a29f076165ec18af3cfdcf10a8d1b9066
-}
-
-func TestArgon2i(t *testing.T) {
-	ctx := Context{
-		Iterations:     3,
-		Memory:         1 << 5,
-		Parallelism:    4,
-		Secret:         bytes.Repeat([]byte{3}, 8),
-		AssociatedData: bytes.Repeat([]byte{4}, 12),
-		HashLen:        32,
-		Mode:           ModeArgon2i,
-	}
-
-	password := bytes.Repeat([]byte{1}, 32)
-	salt := bytes.Repeat([]byte{2}, 16)
-	expected, _ := hex.DecodeString("87aeedd6517ab830cd9765cd8231abb2e647a5dee08f7c05e02fcb763335d0fd")
-	hash, err := ctx.Hash(password, salt)
-
+	ctx.Mode = ModeArgon2d
+	s, err := HashEncoded(ctx, []byte("somepassword"), []byte("somesalt"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !bytes.Equal(expected, hash) {
-		t.Fatal("hash output did not match test vector")
-	}
-}
-
-func TestArgon2d(t *testing.T) {
-	ctx := Context{
-		Iterations:     3,
-		Memory:         1 << 5,
-		Parallelism:    4,
-		Secret:         bytes.Repeat([]byte{3}, 8),
-		AssociatedData: bytes.Repeat([]byte{4}, 12),
-		HashLen:        32,
-		Mode:           ModeArgon2d,
-	}
-
-	password := bytes.Repeat([]byte{1}, 32)
-	salt := bytes.Repeat([]byte{2}, 16)
-	expected, _ := hex.DecodeString("96a9d4e5a1734092c85e29f410a45914a5dd1f5cbf08b2670da68a0285abf32b")
-	hash, err := ctx.Hash(password, salt)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(expected, hash) {
-		t.Fatal("hash output did not match test vector")
-	}
-}
-
-func TestHashNil(t *testing.T) {
-	ctx := NewContext()
-	password := make([]byte, 2)
-	salt := make([]byte, 2)
-
-	_, err := ctx.Hash(nil, salt)
-	if err == nil {
-		t.Error("Hash: expected err (password = nil)")
-	}
-
-	_, err = ctx.Hash(password, nil)
-	if err == nil {
-		t.Error("Hash: expected err (salt = nil)")
-	}
-}
-
-func TestVerifyNil(t *testing.T) {
-	ctx := NewContext()
-	password := make([]byte, 16)
-	salt := make([]byte, 16)
-	hash := make([]byte, 32)
-
-	_, err := ctx.Verify(nil, password, salt)
-	if err == nil {
-		t.Error("expected err (hash = nil)")
-	}
-
-	_, err = ctx.Verify(hash, nil, salt)
-	if err == nil {
-		t.Error("expected err (password = nil)")
-	}
-
-	_, err = ctx.Verify(hash, password, nil)
-	if err == nil {
-		t.Error("expected err (salt = nil)")
+	expected := "$argon2d$m=4096,t=3,p=1$c29tZXNhbHQ$9zHzndOtdbtKI3zBlrpnnpjNj9FnrkeiK43kb8NuuMc"
+	if s != expected {
+		t.Fatalf("HashEncoded: got %q; want %q", s, expected)
 	}
 }
 
 func TestVerify(t *testing.T) {
-	testVerify(t, ModeArgon2d)
-	testVerify(t, ModeArgon2i)
+	ctx := NewContext()
+
+	ctx.Mode = ModeArgon2d
+	testVerify(t, ctx)
+	testVerifyEncoded(t, ctx)
+
+	ctx.Mode = ModeArgon2i
+	testVerify(t, ctx)
+	testVerifyEncoded(t, ctx)
 }
 
 func TestFlagClearPassword(t *testing.T) {
@@ -133,15 +89,15 @@ func TestFlagClearPassword(t *testing.T) {
 	password := []byte("somepassword")
 	salt := []byte("somesalt")
 
-	ctx.Hash(password, salt)
+	Hash(ctx, password, salt)
 	if !bytes.Equal([]byte("somepassword"), password) {
-		t.Fatalf("Hash: password slice is modified")
+		t.Fatalf("password slice is modified")
 	}
 
 	ctx.Flags = FlagClearMemory | FlagClearPassword
-	ctx.Hash(password, salt)
+	Hash(ctx, password, salt)
 	if !bytes.Equal(make([]byte, len(password)), password) {
-		t.Fatalf("Hash: password slice is not cleared")
+		t.Fatalf("password slice is not cleared")
 	}
 }
 
@@ -152,58 +108,69 @@ func TestFlagClearSecret(t *testing.T) {
 	password := []byte("somepassword")
 	salt := []byte("somesalt")
 
-	ctx.Hash(password, salt)
+	Hash(ctx, password, salt)
 	if !bytes.Equal([]byte("somesecret"), ctx.Secret) {
-		t.Fatalf("Hash: secret slice is modified")
+		t.Fatalf("secret slice is modified")
 	}
 
 	ctx.Flags = FlagClearMemory | FlagClearSecret
-	ctx.Hash(password, salt)
+	Hash(ctx, password, salt)
 	if !bytes.Equal(make([]byte, len(ctx.Secret)), ctx.Secret) {
-		t.Fatalf("Hash: secret slice is not cleared")
+		t.Fatalf("secret slice is not cleared")
 	}
 }
 
-func testVerify(t *testing.T, mode Mode) {
-	ctx := NewContext()
-	ctx.Mode = mode
+func testVerifyEncoded(t *testing.T, ctx *Context) {
+	s, err := HashEncoded(ctx, []byte("somepassword"), []byte("somesalt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pw := []byte("somepassword")
+	ok, _ := VerifyEncoded(s, pw)
+	if !ok {
+		t.Fatalf("VerifyEncoded(s, []byte(%q)) = false; want true", pw)
+	}
+
+	pw = []byte("someotherpassword")
+	ok, _ = VerifyEncoded(s, pw)
+	if ok {
+		t.Fatalf("VerifyEncoded(s, []byte(%q)) = true; want false", pw)
+	}
+}
+
+func testVerify(t *testing.T, ctx *Context) {
 	password := []byte("hunter2")
 	salt := []byte("somesalt")
-	hash, err := ctx.Hash(password, salt)
+	hash, err := Hash(ctx, password, salt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test correct password
-	ok, err := ctx.Verify(hash, password, salt)
+	ok, err := Verify(ctx, hash, password, salt)
 	if err != nil {
 		t.Error(err)
 	}
 	if !ok {
-		t.Errorf("Verify returned false with correct values (%s)", mode)
+		t.Errorf("Verify(..) = false; want true (%v)", ctx)
 	}
 
 	// Test incorrect password
-	ok, err = ctx.Verify(hash, []byte("hunter3"), salt)
+	ok, err = Verify(ctx, hash, []byte("hunter3"), salt)
 	if err != nil {
 		t.Error(err)
 	}
 	if ok {
-		t.Error("Verify returned true with incorrect password")
+		t.Errorf("Verify(badpw) = true; want false (%v)", ctx)
 	}
 
 	// Test incorrect salt
-	ok, err = ctx.Verify(hash, password, []byte("somepepper"))
+	ok, err = Verify(ctx, hash, password, []byte("somepepper"))
 	if err != nil {
 		t.Error(err)
 	}
 	if ok {
-		t.Error("Verify returned true with incorrect salt")
-	}
-
-	// Test error (salt too short)
-	_, err = ctx.Verify(hash, password, []byte("x"))
-	if err == nil {
-		t.Errorf("Verify: err is nil")
+		t.Errorf("Verify(badsalt) = true; want false (%v)", ctx)
 	}
 }
