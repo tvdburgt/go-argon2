@@ -1,32 +1,35 @@
 # go-argon2
 Go bindings for the reference C implementation of
-[Argon2](https://github.com/P-H-C/phc-winner-argon2), the winner of the Password
-Hash Competition. See
-[godoc.org](https://godoc.org/github.com/tvdburgt/go-argon2) for more
+[Argon2](https://github.com/P-H-C/phc-winner-argon2), the winner of the
+[Password Hash Competition](https://password-hashing.net).
+
+See [godoc.org](https://godoc.org/github.com/tvdburgt/go-argon2) for more
 information.
 
 ## Installation
-This package depends on `libargon2`. If it's already available on your system,
-you can simply install it directly using `go get`:
+This package depends on `libargon2`, specifically `libargon2.a` `argon2.h`. If
+these are already available in your search paths, you can simply install it
+directly using `go get`:
 
 ```
 $ go get github.com/tvdburgt/go-argon2
 ```
 
-Otherwise, you can get this package without installing it directly and use
-library submodule in this repository:
+Otherwise, get this package without installing it directly and use the library
+submodule in this repository:
 ```
 $ go get -d github.com/tvdburgt/go-argon2
 $ cd $GOPATH/src/github.com/tvdburgt/go-argon2
 $ git submodule update --init
 $ cd libargon2
 $ make && make test
+$ go test github.com/tvdburgt/go-argon2
 ```
 
 ## Examples
 ### Raw hash with default configuration
 ```go
-hash, err := argon2.Hash(argon2.NewContext(), []byte("hunter2"), []byte("somesalt"))
+hash, err := argon2.Hash(argon2.NewContext(), []byte("password"), []byte("somesalt"))
 if err != nil {
 	log.Fatal(err)
 }
@@ -44,7 +47,7 @@ ctx := &argon2.Context{
 	Mode:        argon2.ModeArgon2i,
 }
 
-s, err := argon2.HashEncoded(ctx, []byte("hunter2"), []byte("somesalt"))
+s, err := argon2.HashEncoded(ctx, []byte("password"), []byte("somesalt"))
 if err != nil {
 	log.Fatal(err)
 }
