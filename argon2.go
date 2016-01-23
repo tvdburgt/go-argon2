@@ -9,8 +9,6 @@ import "C"
 import (
 	"bytes"
 	"crypto/subtle"
-	"errors"
-	"fmt"
 	"strings"
 	"unsafe"
 )
@@ -25,21 +23,6 @@ const (
 	FlagClearSecret   int = C.ARGON2_FLAG_CLEAR_SECRET
 	FlagClearMemory   int = C.ARGON2_FLAG_CLEAR_MEMORY
 )
-
-var (
-	ErrContext  = errors.New("argon2: invalid context")
-	ErrPassword = errors.New("argon2: password is nil or empty")
-	ErrSalt     = errors.New("argon2: salt is nil or empty")
-)
-
-// Error is the internal error propagated from the Argon2 library.
-// See argon2.h for a list of corresponding error codes.
-type Error int
-
-func (e Error) Error() string {
-	msg := C.error_message(C.int(e))
-	return fmt.Sprintf("argon2: %s", C.GoString(msg))
-}
 
 type Context struct {
 	Iterations  int // number of iterations (t_cost)
@@ -163,7 +146,7 @@ func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 		return false, ErrContext
 	}
 	if len(hash) == 0 {
-		return false, errors.New("argon2: hash is nil or empty")
+		return false, ErrHash
 	}
 
 	hash2, err := ctx.hash(password, salt)
@@ -206,7 +189,7 @@ func getMode(s string) (int, error) {
 	case strings.HasPrefix(s, "$argon2i"):
 		return ModeArgon2i, nil
 	default:
-		return -1, errors.New("argon2: unable to extract mode from encoded string")
+		return -1, ErrDecodingFail
 	}
 }
 

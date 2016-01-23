@@ -71,6 +71,28 @@ func TestHashEncoded(t *testing.T) {
 	}
 }
 
+func TestHash_Error(t *testing.T) {
+	ctx := NewContext()
+	_, err := Hash(ctx, []byte("password"), []byte("s"))
+	if err != ErrSaltTooShort {
+		t.Errorf("got %q, want %q", err, ErrSaltTooLong)
+	}
+
+	ctx = NewContext()
+	ctx.Mode = 99
+	_, err = Hash(ctx, []byte("password"), []byte("somesalt"))
+	if err != ErrIncorrectType {
+		t.Errorf("got %q, want %q", err, ErrIncorrectType)
+	}
+
+	ctx = NewContext()
+	ctx.Memory = 4
+	_, err = Hash(ctx, []byte("password"), []byte("somesalt"))
+	if err != ErrMemoryTooLittle {
+		t.Errorf("got %q, want %q", err, ErrMemoryTooLittle)
+	}
+}
+
 func TestVerify(t *testing.T) {
 	ctx := NewContext()
 
