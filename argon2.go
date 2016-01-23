@@ -1,7 +1,7 @@
 package argon2
 
 // #cgo CFLAGS: -I${SRCDIR}/libargon2/src
-// #cgo LDFLAGS: -L${SRCDIR}/libargon2 -largon2
+// #cgo LDFLAGS: -L${SRCDIR}/libargon2 -l:libargon2.a
 // #include <stdlib.h>
 // #include "argon2.h"
 import "C"
