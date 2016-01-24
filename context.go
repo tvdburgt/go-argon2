@@ -6,16 +6,14 @@ import "C"
 // Context represents a structure that holds all static configuration values,
 // used to parameterize an Argon2 hash function.
 type Context struct {
-	Iterations  int // number of iterations (t_cost)
-	Memory      int // memory usage in KiB (m_cost)
-	Parallelism int // number of parallel threads
-
-	HashLen int // desired hash output length
-	Mode    int // ModeArgon2d or ModeArgon2i
-
-	Secret         []byte // optional
-	AssociatedData []byte // optional
-	Flags          int    // optional
+	Iterations     int    // number of iterations (t_cost)
+	Memory         int    // memory usage in KiB (m_cost)
+	Parallelism    int    // number of parallel threads
+	HashLen        int    // desired hash output length
+	Mode           int    // ModeArgon2d or ModeArgon2i
+	Secret         []byte // optional (not used by default)
+	AssociatedData []byte // optional (not used by default)
+	Flags          int    // optional (default is FlagClearMemory)
 }
 
 // NewContext initializes a new Argon2 context with reasonable defaults.
