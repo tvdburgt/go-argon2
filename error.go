@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-// Error is the internal error propagated from libargon2.
+// Error represents the internal error code propagated from libargon2.
 type Error int
 
 func (e Error) Error() string {

@@ -98,10 +98,18 @@ func TestVerify(t *testing.T) {
 
 	ctx.Mode = ModeArgon2d
 	testVerify(t, ctx)
-	testVerifyEncoded(t, ctx)
 
 	ctx.Mode = ModeArgon2i
 	testVerify(t, ctx)
+}
+
+func TestVerifyEncoded(t *testing.T) {
+	ctx := NewContext()
+
+	ctx.Mode = ModeArgon2d
+	testVerifyEncoded(t, ctx)
+
+	ctx.Mode = ModeArgon2i
 	testVerifyEncoded(t, ctx)
 }
 
@@ -149,15 +157,18 @@ func testVerifyEncoded(t *testing.T, ctx *Context) {
 	}
 
 	pw := []byte("somepassword")
-	ok, _ := VerifyEncoded(s, pw)
+	ok, err := VerifyEncoded(s, pw)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !ok {
-		t.Fatalf("VerifyEncoded(s, []byte(%q)) = false; want true", pw)
+		t.Errorf("VerifyEncoded(s, []byte(%q)) = false; want true", pw)
 	}
 
 	pw = []byte("someotherpassword")
 	ok, _ = VerifyEncoded(s, pw)
 	if ok {
-		t.Fatalf("VerifyEncoded(s, []byte(%q)) = true; want false", pw)
+		t.Errorf("VerifyEncoded(s, []byte(%q)) = true; want false", pw)
 	}
 }
 
@@ -172,7 +183,7 @@ func testVerify(t *testing.T, ctx *Context) {
 	// Test correct password
 	ok, err := Verify(ctx, hash, password, salt)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if !ok {
 		t.Errorf("Verify(..) = false; want true (%v)", ctx)
@@ -181,7 +192,7 @@ func testVerify(t *testing.T, ctx *Context) {
 	// Test incorrect password
 	ok, err = Verify(ctx, hash, []byte("hunter3"), salt)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if ok {
 		t.Errorf("Verify(badpw) = true; want false (%v)", ctx)
@@ -190,7 +201,7 @@ func testVerify(t *testing.T, ctx *Context) {
 	// Test incorrect salt
 	ok, err = Verify(ctx, hash, password, []byte("somepepper"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if ok {
 		t.Errorf("Verify(badsalt) = true; want false (%v)", ctx)

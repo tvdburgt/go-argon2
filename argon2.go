@@ -1,3 +1,7 @@
+// Package argon2 provides low-level bindings for the Argon2 hashing library:
+// libargon2. Argon2 specifies two versions: Argon2i and Argon2d. Argon2i is
+// useful for protection against side-channel attacks, while Argon2d provides
+// the highest resistance against GPU cracking attacks.
 package argon2
 
 // #cgo CFLAGS: -I${SRCDIR}/libargon2/src
@@ -24,87 +28,8 @@ const (
 	FlagClearMemory   int = C.ARGON2_FLAG_CLEAR_MEMORY
 )
 
-type Context struct {
-	Iterations  int // number of iterations (t_cost)
-	Memory      int // memory usage in KiB (m_cost)
-	Parallelism int // number of parallel threads
-
-	HashLen int // desired hash output length
-	Mode    int // ModeArgon2d or ModeArgon2i
-
-	Secret         []byte // optional
-	AssociatedData []byte // optional
-	Flags          int    // optional
-}
-
-// NewContext initializes a new Argon2 context with reasonable defaults.
-func NewContext() *Context {
-	return &Context{
-		Iterations:  3,
-		Memory:      1 << 12, // 4 MiB
-		Parallelism: 1,
-		HashLen:     32,
-		Mode:        ModeArgon2i,
-	}
-}
-
-// init initializes an argon2_context struct instance and allocates a hash
-// slice.
-func (ctx *Context) init(password, salt []byte) (c *C.argon2_context, hash []byte, err error) {
-	if len(password) == 0 {
-		return nil, nil, ErrPassword
-	}
-	if len(salt) == 0 {
-		return nil, nil, ErrSalt
-	}
-
-	hash = make([]byte, ctx.HashLen)
-
-	c = &C.argon2_context{
-		out:     (*C.uint8_t)(&hash[0]),
-		outlen:  C.uint32_t(ctx.HashLen),
-		pwd:     (*C.uint8_t)(&password[0]),
-		pwdlen:  C.uint32_t(len(password)),
-		salt:    (*C.uint8_t)(&salt[0]),
-		saltlen: C.uint32_t(len(salt)),
-		t_cost:  C.uint32_t(ctx.Iterations),
-		m_cost:  C.uint32_t(ctx.Memory),
-		lanes:   C.uint32_t(ctx.Parallelism),
-		threads: C.uint32_t(ctx.Parallelism),
-		flags:   C.ARGON2_DEFAULT_FLAGS,
-	}
-
-	if len(ctx.Secret) > 0 {
-		c.secret = (*C.uint8_t)(&ctx.Secret[0])
-		c.secretlen = C.uint32_t(len(ctx.Secret))
-	}
-
-	if len(ctx.AssociatedData) > 0 {
-		c.ad = (*C.uint8_t)(&ctx.AssociatedData[0])
-		c.adlen = C.uint32_t(len(ctx.AssociatedData))
-	}
-
-	if ctx.Flags != 0 {
-		c.flags = C.uint32_t(ctx.Flags)
-	}
-
-	return
-}
-
-func (ctx *Context) hash(password, salt []byte) ([]byte, error) {
-	c, hash, err := ctx.init(password, salt)
-	if err != nil {
-		return nil, err
-	}
-
-	result := C.argon2_core(c, C.argon2_type(ctx.Mode))
-	if result != C.ARGON2_OK {
-		return nil, Error(result)
-	}
-
-	return hash, nil
-}
-
+// Hash hashes a password given a salt and an initialized Argon2 context. It
+// returns the calculated hash as an output of raw bytes.
 func Hash(ctx *Context, password, salt []byte) ([]byte, error) {
 	if ctx == nil {
 		return nil, ErrContext
@@ -113,6 +38,7 @@ func Hash(ctx *Context, password, salt []byte) ([]byte, error) {
 	return ctx.hash(password, salt)
 }
 
+// HashEncoded hashes a password and produces a crypt-like encoded string.
 func HashEncoded(ctx *Context, password, salt []byte) (string, error) {
 	if ctx == nil {
 		return "", ErrContext
@@ -141,6 +67,7 @@ func HashEncoded(ctx *Context, password, salt []byte) (string, error) {
 	return string(s), nil
 }
 
+// Verify verifies an Argon2 hash against a plaintext password.
 func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 	if ctx == nil {
 		return false, ErrContext
@@ -154,10 +81,12 @@ func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 		return false, err
 	}
 
-	// verify_i/verify_d doesn't seem to be using constant time comparison...
+	// The raw verify functions in libargon2 don't seem to be using a
+	// constant time comparison. Resort to crypto/subtle for now.
 	return subtle.ConstantTimeCompare(hash, hash2) == 1, nil
 }
 
+// VerifyEncoded verifies an encoded Argon2 hash s against a plaintext password.
 func VerifyEncoded(s string, password []byte) (bool, error) {
 	mode, err := getMode(s)
 	if err != nil {

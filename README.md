@@ -7,7 +7,7 @@ See [godoc.org](https://godoc.org/github.com/tvdburgt/go-argon2) for more
 information.
 
 ## Installation
-This package depends on `libargon2`, specifically `libargon2.a` `argon2.h`. If
+This package depends on `libargon2`, specifically `libargon2.a` and `argon2.h`. If
 these are already available in your search paths, you can simply install it
 directly using `go get`:
 
@@ -26,7 +26,10 @@ $ make && make test
 $ go test github.com/tvdburgt/go-argon2
 ```
 
-## Examples
+Until the library API has stabilized, it's probably better to use the latter
+approach.
+
+## Usage
 ### Raw hash with default configuration
 ```go
 hash, err := argon2.Hash(argon2.NewContext(), []byte("password"), []byte("somesalt"))
