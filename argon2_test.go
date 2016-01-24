@@ -48,7 +48,7 @@ func TestHash(t *testing.T) {
 		expected, _ := hex.DecodeString(v.hash)
 		hash, err := Hash(v.ctx, v.password, v.salt)
 		if err != nil {
-			t.Errorf("received error: %s (%d)", i, err)
+			t.Errorf("received error: %s (%d)", err, i)
 		}
 		if !bytes.Equal(hash, expected) {
 			t.Errorf("assertion failed (%d: %s)", i, v.hash)
