@@ -23,7 +23,6 @@ var (
 	ErrHash     = errors.New("argon2: hash is nil or empty")
 )
 
-// Internal errors defined in libargon2.
 var (
 	ErrOutputPtrNull         Error = C.ARGON2_OUTPUT_PTR_NULL
 	ErrOutputTooShort        Error = C.ARGON2_OUTPUT_TOO_SHORT

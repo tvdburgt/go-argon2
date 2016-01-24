@@ -1,15 +1,13 @@
-# go-argon2
+# go-argon2 [![GoDoc](https://godoc.org/github.com/tvdburgt/go-argon2?status.svg)](https://godoc.org/github.com/tvdburgt/go-argon2)
+
 Go bindings for the reference C implementation of
 [Argon2](https://github.com/P-H-C/phc-winner-argon2), the winner of the
 [Password Hash Competition](https://password-hashing.net).
 
-See [godoc.org](https://godoc.org/github.com/tvdburgt/go-argon2) for more
-information.
-
 ## Installation
-This package depends on `libargon2`, specifically `libargon2.a` and `argon2.h`. If
-these are already available in your search paths, you can simply install it
-directly using `go get`:
+This package depends on `libargon2`, specifically the header `libargon2.a` and
+static library `argon2.h`. If these are already available in your search paths,
+you can simply install it directly using `go get`:
 
 ```
 $ go get github.com/tvdburgt/go-argon2
