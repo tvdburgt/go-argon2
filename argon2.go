@@ -1,7 +1,8 @@
 // Package argon2 provides low-level bindings for the Argon2 hashing library:
 // libargon2. Argon2 specifies two versions: Argon2i and Argon2d. Argon2i is
-// useful for protection against side-channel attacks, while Argon2d provides
-// the highest resistance against GPU cracking attacks.
+// useful for protection against side-channel attacks (key derivation), while
+// Argon2d provides the highest resistance against GPU cracking attacks
+// (proof-of-work).
 package argon2
 
 // #cgo CFLAGS: -I${SRCDIR}/libargon2/src
