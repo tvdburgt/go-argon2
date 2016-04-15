@@ -1,6 +1,7 @@
 package argon2
 
-// #include "argon2.h"
+// #cgo freebsd CFLAGS: -I/usr/local/include
+// #include <argon2.h>
 import "C"
 
 import (
@@ -12,7 +13,7 @@ import (
 type Error int
 
 func (e Error) Error() string {
-	msg := C.error_message(C.int(e))
+	msg := C.argon2_error_message(C.int(e))
 	return fmt.Sprintf("argon2: %s", C.GoString(msg))
 }
 
@@ -31,8 +32,8 @@ var (
 	ErrPwdTooLong            Error = C.ARGON2_PWD_TOO_LONG
 	ErrSaltTooShort          Error = C.ARGON2_SALT_TOO_SHORT
 	ErrSaltTooLong           Error = C.ARGON2_SALT_TOO_LONG
-	ErrADTooShort            Error = C.ARGON2_AD_TOO_SHORT
-	ErrADTooLong             Error = C.ARGON2_AD_TOO_LONG
+	ErrAdTooShort            Error = C.ARGON2_AD_TOO_SHORT
+	ErrAdTooLong             Error = C.ARGON2_AD_TOO_LONG
 	ErrSecretTooShort        Error = C.ARGON2_SECRET_TOO_SHORT
 	ErrSecretTooLong         Error = C.ARGON2_SECRET_TOO_LONG
 	ErrTimeTooSmall          Error = C.ARGON2_TIME_TOO_SMALL
@@ -44,7 +45,7 @@ var (
 	ErrPwdPtrMismatch        Error = C.ARGON2_PWD_PTR_MISMATCH
 	ErrSaltPtrMismatch       Error = C.ARGON2_SALT_PTR_MISMATCH
 	ErrSecretPtrMismatch     Error = C.ARGON2_SECRET_PTR_MISMATCH
-	ErrADPtrMismatch         Error = C.ARGON2_AD_PTR_MISMATCH
+	ErrAdPtrMismatch         Error = C.ARGON2_AD_PTR_MISMATCH
 	ErrMemoryAllocationError Error = C.ARGON2_MEMORY_ALLOCATION_ERROR
 	ErrFreeMemoryCbkNull     Error = C.ARGON2_FREE_MEMORY_CBK_NULL
 	ErrAllocateMemoryCbkNull Error = C.ARGON2_ALLOCATE_MEMORY_CBK_NULL
@@ -56,6 +57,7 @@ var (
 	ErrMissingArgs           Error = C.ARGON2_MISSING_ARGS
 	ErrEncodingFail          Error = C.ARGON2_ENCODING_FAIL
 	ErrDecodingFail          Error = C.ARGON2_DECODING_FAIL
-	// ErrThreadFail            Error = C.ARGON2_THREAD_FAIL
-	// ErrDecodingLengthFail    Error = C.ARGON2_DECODING_LENGTH_FAIL
+	ErrThreadFail            Error = C.ARGON2_THREAD_FAIL
+	ErrDecodingLengthFail    Error = C.ARGON2_DECODING_LENGTH_FAIL
+	ErrVerifyMismatch        Error = C.ARGON2_VERIFY_MISMATCH
 )
