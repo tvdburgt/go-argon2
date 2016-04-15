@@ -15,7 +15,9 @@ default search paths, you can simply install it directly using `go get`:
 $ go get github.com/bitmark-inc/go-argon2
 ```
 
-Note: see https://github.com/bitmark-inc/freebsd-ports/security/libargon2 to build/install the dynamic library
+Note: see https://github.com/bitmark-inc/freebsd-ports under the
+`security/libargon2` directory for building and installing the dynamic
+library on FreeBSD.
 
 ~~Otherwise, get this package without installing it directly and use the library
 submodule in this repository:~~
