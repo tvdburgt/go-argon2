@@ -5,8 +5,8 @@
 // (proof-of-work).
 package argon2
 
-// #cgo freebsd CFLAGS: -I/usr/local/include
-// #cgo freebsd LDFLAGS: -L/usr/local/lib -largon2
+// #cgo CFLAGS: -I/usr/local/include
+// #cgo LDFLAGS: -L/usr/local/lib -largon2
 // #include <stdlib.h>
 // #include <argon2.h>
 import "C"
