@@ -2,7 +2,7 @@ package argon2_test
 
 import (
 	"fmt"
-	"github.com/bitmark-inc/go-argon2"
+	"github.com/tvdburgt/go-argon2"
 	"log"
 )
 

@@ -1,6 +1,6 @@
 package argon2
 
-// #cgo freebsd CFLAGS: -I/usr/local/include
+// #cgo CFLAGS: -I/usr/local/include
 // #include <argon2.h>
 import "C"
 
