@@ -13,7 +13,7 @@ $ go get -d github.com/tvdburgt/go-argon2
 ```
 
 This package depends on `libargon2`, specifically `libargon2.so` and `argon2.h`.
-Follow the following steps to make sure this library and header are available on your system:
+Make sure the library files are available in `/usr/local`:
 
 
 ```
@@ -31,10 +31,10 @@ Test everything is installed correctly:
 ```
 $ cd $GOCODE/src/github.com/tvdburgt/go-argon2/
 $ go test
+```
 
 ## Usage
 ### Raw hash with default configuration
-```
 
 ```go
 hash, err := argon2.Hash(argon2.NewContext(), []byte("password"), []byte("somesalt"))
