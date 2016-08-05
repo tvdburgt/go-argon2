@@ -17,6 +17,7 @@ func ExampleHash() {
 		Parallelism: 4,
 		HashLen:     32,
 		Mode:        argon2.ModeArgon2i,
+		Version:     argon2.Version10,
 	}
 
 	hash, err := argon2.Hash(ctx, password, salt)
@@ -41,6 +42,7 @@ func ExampleHashEncoded() {
 		Parallelism: 4,
 		HashLen:     32,
 		Mode:        argon2.ModeArgon2i,
+		Version:     argon2.Version10,
 	}
 
 	s, err := argon2.HashEncoded(ctx, password, salt)
@@ -51,5 +53,5 @@ func ExampleHashEncoded() {
 	fmt.Println(s)
 
 	// Output:
-	// $argon2i$m=65536,t=2,p=4$c29tZXNhbHQAAAAAAAAAAA$QWLzI4TY9HkL2ZTLc8g6SinwdhZewYrzz9zxCo0bkGY
+	// $argon2i$v=16$m=65536,t=2,p=4$c29tZXNhbHQAAAAAAAAAAA$QWLzI4TY9HkL2ZTLc8g6SinwdhZewYrzz9zxCo0bkGY
 }

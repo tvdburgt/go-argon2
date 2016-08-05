@@ -5,10 +5,10 @@
 // (proof-of-work).
 package argon2
 
-// #cgo CFLAGS: -I${SRCDIR}/libargon2/src
-// #cgo LDFLAGS: -L${SRCDIR}/libargon2 -l:libargon2.a
+// #cgo CFLAGS: -I/usr/local/include
+// #cgo LDFLAGS: -L/usr/local/lib -largon2
 // #include <stdlib.h>
-// #include "argon2.h"
+// #include <argon2.h>
 import "C"
 
 import (
@@ -21,6 +21,12 @@ import (
 const (
 	ModeArgon2d int = C.Argon2_d
 	ModeArgon2i int = C.Argon2_i
+)
+
+const (
+	Version10      int = C.ARGON2_VERSION_10
+	Version13      int = C.ARGON2_VERSION_13
+	VersionDefault int = C.ARGON2_VERSION_NUMBER
 )
 
 const (
@@ -40,24 +46,37 @@ func Hash(ctx *Context, password, salt []byte) ([]byte, error) {
 }
 
 // HashEncoded hashes a password and produces a crypt-like encoded string.
-func HashEncoded(ctx *Context, password, salt []byte) (string, error) {
+func HashEncoded(ctx *Context, password []byte, salt []byte) (string, error) {
 	if ctx == nil {
 		return "", ErrContext
 	}
 
-	c, _, err := ctx.init(password, salt)
-	if err != nil {
-		return "", err
+	if len(password) == 0 {
+		return "", ErrPassword
+	}
+	if len(salt) == 0 {
+		return "", ErrSalt
 	}
 
-	s := make([]byte, getEncodedLen(ctx.HashLen, len(salt)))
+	encodedlen := C.argon2_encodedlen(
+		C.uint32_t(ctx.Iterations),
+		C.uint32_t(ctx.Memory),
+		C.uint32_t(ctx.Parallelism),
+		C.uint32_t(len(salt)),
+		C.uint32_t(ctx.HashLen))
+
+	s := make([]byte, encodedlen)
+
 	result := C.argon2_hash(
-		c.t_cost, c.m_cost, c.threads,
-		unsafe.Pointer(c.pwd), C.size_t(c.pwdlen),
-		unsafe.Pointer(c.salt), C.size_t(c.saltlen),
-		nil, C.size_t(c.outlen),
-		(*C.char)(unsafe.Pointer(&s[0])), C.size_t(len(s)),
-		C.argon2_type(ctx.Mode))
+		C.uint32_t(ctx.Iterations),
+		C.uint32_t(ctx.Memory),
+		C.uint32_t(ctx.Parallelism),
+		unsafe.Pointer(&password[0]), C.size_t(len(password)),
+		unsafe.Pointer(&salt[0]), C.size_t(len(salt)),
+		nil, C.size_t(ctx.HashLen),
+		(*C.char)(unsafe.Pointer(&s[0])), C.size_t(encodedlen),
+		C.argon2_type(ctx.Mode),
+		C.uint32_t(ctx.Version))
 
 	if result != C.ARGON2_OK {
 		return "", Error(result)
@@ -82,8 +101,6 @@ func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 		return false, err
 	}
 
-	// The raw verify functions in libargon2 don't seem to be using a
-	// constant time comparison. Resort to crypto/subtle for now.
 	return subtle.ConstantTimeCompare(hash, hash2) == 1, nil
 }
 
@@ -105,6 +122,8 @@ func VerifyEncoded(s string, password []byte) (bool, error) {
 
 	if result == C.ARGON2_OK {
 		return true, nil
+	} else if result == C.ARGON2_VERIFY_MISMATCH {
+		return false, nil
 	}
 
 	// argon2_verify always seems to return an error in this case...
@@ -121,22 +140,4 @@ func getMode(s string) (int, error) {
 	default:
 		return -1, ErrDecodingFail
 	}
-}
-
-// getEncodedLen calculates the maximum number of bytes required for an encoded
-// string.
-func getEncodedLen(hashLen, saltLen int) int {
-	const mlen = 12
-	const tlen = 7
-	const plen = 7
-
-	total := len("$argon2i") + mlen + tlen + plen
-	total += getBase64Len(hashLen) + 1
-	total += getBase64Len(saltLen) + 1
-
-	return total + 1 // include null byte
-}
-
-func getBase64Len(n int) int {
-	return (n + 2) / 3 * 4 // based on base64.EncodedLen
 }
