@@ -58,7 +58,14 @@ func HashEncoded(ctx *Context, password []byte, salt []byte) (string, error) {
 		return "", ErrSalt
 	}
 
-	s := make([]byte, getEncodedLen(ctx.HashLen, len(salt)))
+	encodedlen := C.argon2_encodedlen(
+		C.uint32_t(ctx.Iterations),
+		C.uint32_t(ctx.Memory),
+		C.uint32_t(ctx.Parallelism),
+		C.uint32_t(len(salt)),
+		C.uint32_t(ctx.HashLen))
+
+	s := make([]byte, encodedlen)
 
 	result := C.argon2_hash(
 		C.uint32_t(ctx.Iterations),
@@ -67,7 +74,7 @@ func HashEncoded(ctx *Context, password []byte, salt []byte) (string, error) {
 		unsafe.Pointer(&password[0]), C.size_t(len(password)),
 		unsafe.Pointer(&salt[0]), C.size_t(len(salt)),
 		nil, C.size_t(ctx.HashLen),
-		(*C.char)(unsafe.Pointer(&s[0])), C.size_t(len(s)),
+		(*C.char)(unsafe.Pointer(&s[0])), C.size_t(encodedlen),
 		C.argon2_type(ctx.Mode),
 		C.uint32_t(ctx.Version))
 
@@ -94,8 +101,6 @@ func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 		return false, err
 	}
 
-	// The raw verify functions in libargon2 don't seem to be using a
-	// constant time comparison. Resort to crypto/subtle for now.
 	return subtle.ConstantTimeCompare(hash, hash2) == 1, nil
 }
 
@@ -135,22 +140,4 @@ func getMode(s string) (int, error) {
 	default:
 		return -1, ErrDecodingFail
 	}
-}
-
-// getEncodedLen calculates the maximum number of bytes required for an encoded
-// string.
-func getEncodedLen(hashLen, saltLen int) int {
-	const mlen = 12
-	const tlen = 7
-	const plen = 7
-
-	total := len("$argon2i") + mlen + tlen + plen
-	total += getBase64Len(hashLen) + 1
-	total += getBase64Len(saltLen) + 1
-
-	return total + 1 // include null byte
-}
-
-func getBase64Len(n int) int {
-	return (n + 2) / 3 * 4 // based on base64.EncodedLen
 }
