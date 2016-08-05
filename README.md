@@ -34,6 +34,7 @@ $ go test
 
 ## Usage
 ### Raw hash with default configuration
+```
 
 ```go
 hash, err := argon2.Hash(argon2.NewContext(), []byte("password"), []byte("somesalt"))
