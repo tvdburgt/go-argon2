@@ -1,6 +1,6 @@
 package argon2
 
-// #cgo CFLAGS: -I/usr/local/include
+// #cgo CFLAGS: -I/usr/include
 // #include <argon2.h>
 import "C"
 

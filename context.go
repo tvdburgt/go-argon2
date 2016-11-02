@@ -1,6 +1,6 @@
 package argon2
 
-// #cgo CFLAGS: -I/usr/local/include
+// #cgo CFLAGS: -I/usr/include
 // #include <argon2.h>
 // #include "wrapper.h"
 import "C"
@@ -12,11 +12,11 @@ type Context struct {
 	Memory         int    // memory usage in KiB (m_cost)
 	Parallelism    int    // number of parallel threads
 	HashLen        int    // desired hash output length
-	Mode           int    // ModeArgon2d or ModeArgon2i
-	Version        int    // Version10 or Version13
+	Mode           int    // ModeArgon2d, ModeArgon2i, or ModeArgon2id
+	Version        int    // Version10 or Version13 (aka VersionDefault)
 	Secret         []byte // optional (not used by default)
 	AssociatedData []byte // optional (not used by default)
-	Flags          int    // optional (default is FlagClearMemory)
+	Flags          int    // optional (default is FlagDefault)
 }
 
 // NewContext initializes a new Argon2 context with reasonable defaults.
@@ -61,7 +61,7 @@ func (ctx *Context) hash(password []byte, salt []byte) ([]byte, error) {
 	}
 
 	// optional flags
-	flags := C.ARGON2_DEFAULT_FLAGS
+	flags := FlagDefault
 	if ctx.Flags != 0 {
 		flags = ctx.Flags
 	}

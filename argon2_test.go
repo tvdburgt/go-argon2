@@ -74,6 +74,36 @@ func TestHash(t *testing.T) {
 			bytes.Repeat([]byte{2}, 16),
 			"512b391b6f1162975371d30919734294f868e3be3984f3c1a13a4db9fabe4acb",
 		},
+		{
+			&Context{
+				Iterations:     3,
+				Memory:         1 << 5,
+				Parallelism:    4,
+				Secret:         bytes.Repeat([]byte{3}, 8),
+				AssociatedData: bytes.Repeat([]byte{4}, 12),
+				HashLen:        32,
+				Mode:           ModeArgon2id,
+				Version:        Version10,
+			},
+			bytes.Repeat([]byte{1}, 32),
+			bytes.Repeat([]byte{2}, 16),
+			"b64615f07789b66b645b67ee9ed3b377ae350b6bfcbb0fc95141ea8f322613c0",
+		},
+		{
+			&Context{
+				Iterations:     3,
+				Memory:         1 << 5,
+				Parallelism:    4,
+				Secret:         bytes.Repeat([]byte{3}, 8),
+				AssociatedData: bytes.Repeat([]byte{4}, 12),
+				HashLen:        32,
+				Mode:           ModeArgon2id,
+				Version:        Version13,
+			},
+			bytes.Repeat([]byte{1}, 32),
+			bytes.Repeat([]byte{2}, 16),
+			"0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659",
+		},
 	}
 
 	for i, v := range vectors {
@@ -158,7 +188,7 @@ func TestVerifyEncoded(t *testing.T) {
 
 func TestFlagClearPassword(t *testing.T) {
 	ctx := NewContext()
-	ctx.Flags = FlagClearMemory
+	ctx.Flags = FlagDefault
 	password := []byte("somepassword")
 	salt := []byte("somesalt")
 
@@ -167,7 +197,7 @@ func TestFlagClearPassword(t *testing.T) {
 		t.Fatalf("password slice is modified")
 	}
 
-	ctx.Flags = FlagClearMemory | FlagClearPassword
+	ctx.Flags = FlagClearPassword
 	Hash(ctx, password, salt)
 	if !bytes.Equal(make([]byte, len(password)), password) {
 		t.Fatalf("password slice is not cleared")
@@ -176,7 +206,7 @@ func TestFlagClearPassword(t *testing.T) {
 
 func TestFlagClearSecret(t *testing.T) {
 	ctx := NewContext()
-	ctx.Flags = FlagClearMemory
+	ctx.Flags = FlagDefault
 	ctx.Secret = []byte("somesecret")
 	password := []byte("somepassword")
 	salt := []byte("somesalt")
@@ -186,7 +216,7 @@ func TestFlagClearSecret(t *testing.T) {
 		t.Fatalf("secret slice is modified")
 	}
 
-	ctx.Flags = FlagClearMemory | FlagClearSecret
+	ctx.Flags = FlagClearSecret
 	Hash(ctx, password, salt)
 	if !bytes.Equal(make([]byte, len(ctx.Secret)), ctx.Secret) {
 		t.Fatalf("secret slice is not cleared")
