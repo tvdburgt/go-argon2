@@ -1,12 +1,13 @@
 // Package argon2 provides low-level bindings for the Argon2 hashing library:
-// libargon2. Argon2 specifies two versions: Argon2i and Argon2d. Argon2i is
-// useful for protection against side-channel attacks (key derivation), while
-// Argon2d provides the highest resistance against GPU cracking attacks
-// (proof-of-work).
+// libargon2. Argon2 specifies three versions: Argon2i, Argon2d, and Argon2id.
+// Argon2i is useful for protection against side-channel attacks (key
+// derivation), while Argon2d provides the highest resistance against GPU
+// cracking attacks (proof-of-work). Argon2id provides good protection against
+// both side-channel and GPU cracking attacks.
 package argon2
 
-// #cgo CFLAGS: -I/usr/local/include
-// #cgo LDFLAGS: -L/usr/local/lib -largon2
+// #cgo CFLAGS: -I/usr/include
+// #cgo LDFLAGS: -L/usr/lib -largon2
 // #include <stdlib.h>
 // #include <argon2.h>
 import "C"
@@ -19,8 +20,9 @@ import (
 )
 
 const (
-	ModeArgon2d int = C.Argon2_d
-	ModeArgon2i int = C.Argon2_i
+	ModeArgon2d  int = C.Argon2_d
+	ModeArgon2i  int = C.Argon2_i
+	ModeArgon2id int = C.Argon2_id
 )
 
 const (
@@ -30,10 +32,12 @@ const (
 )
 
 const (
+	FlagDefault       int = C.ARGON2_DEFAULT_FLAGS
 	FlagClearPassword int = C.ARGON2_FLAG_CLEAR_PASSWORD
 	FlagClearSecret   int = C.ARGON2_FLAG_CLEAR_SECRET
-	FlagClearMemory   int = C.ARGON2_FLAG_CLEAR_MEMORY
 )
+
+// Set C.FLAG_clear_internal_memory = 0 to disable internal memory clearing
 
 // Hash hashes a password given a salt and an initialized Argon2 context. It
 // returns the calculated hash as an output of raw bytes.
@@ -63,7 +67,8 @@ func HashEncoded(ctx *Context, password []byte, salt []byte) (string, error) {
 		C.uint32_t(ctx.Memory),
 		C.uint32_t(ctx.Parallelism),
 		C.uint32_t(len(salt)),
-		C.uint32_t(ctx.HashLen))
+		C.uint32_t(ctx.HashLen),
+		C.argon2_type(ctx.Mode))
 
 	s := make([]byte, encodedlen)
 
@@ -137,6 +142,8 @@ func getMode(s string) (int, error) {
 		return ModeArgon2d, nil
 	case strings.HasPrefix(s, "$argon2i"):
 		return ModeArgon2i, nil
+	case strings.HasPrefix(s, "$argon2id"):
+		return ModeArgon2id, nil
 	default:
 		return -1, ErrDecodingFail
 	}

@@ -13,17 +13,14 @@ $ go get -d github.com/tvdburgt/go-argon2
 ```
 
 This package depends on `libargon2`, specifically `libargon2.so` and `argon2.h`.
-Make sure the library files are available in `/usr/local`:
+Make sure the library files are available in `/usr`:
 
 
 ```
 $ git clone https://github.com/P-H-C/phc-winner-argon2.git argon2
 $ cd argon2
-$ git checkout 20160406
-$ make
-$ sudo cp include/argon2.h /usr/local/include
-$ sudo cp libargon2.so /usr/local/lib
-$ sudo ldconfig
+$ git checkout 20161029
+$ sudo make install
 ```
 
 Test everything is installed correctly:
