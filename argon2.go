@@ -112,9 +112,14 @@ func Verify(ctx *Context, hash, password, salt []byte) (bool, error) {
 // VerifyEncoded verifies an encoded Argon2 hash s against a plaintext password.
 func VerifyEncoded(s string, password []byte) (bool, error) {
 	mode, err := getMode(s)
+	
+	println("a")
+	
 	if err != nil {
 		return false, err
 	}
+	
+	println("b")
 
 	cs := C.CString(s)
 	defer C.free(unsafe.Pointer(cs))
