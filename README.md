@@ -19,7 +19,7 @@ Make sure the library files are available in `/usr`:
 ```
 $ git clone https://github.com/P-H-C/phc-winner-argon2.git argon2
 $ cd argon2
-$ git checkout 20161029
+$ git checkout tags/20171227
 $ sudo make install
 ```
 
