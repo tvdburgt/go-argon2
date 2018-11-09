@@ -66,6 +66,12 @@ func (ctx *Context) hash(password []byte, salt []byte) ([]byte, error) {
 		flags = ctx.Flags
 	}
 
+	// ensure version has a default
+	version := VersionDefault
+	if ctx.Version != 0 {
+		version = ctx.Version
+	}
+
 	// wrapper to overcome go pointer passing limitations
 	result := C.argon2_wrapper(
 		(*C.uint8_t)(&hash[0]), C.uint32_t(ctx.HashLen),
@@ -77,7 +83,7 @@ func (ctx *Context) hash(password []byte, salt []byte) ([]byte, error) {
 		C.uint32_t(ctx.Memory),
 		C.uint32_t(ctx.Parallelism),
 		C.uint32_t(ctx.Parallelism),
-		C.uint32_t(ctx.Version),
+		C.uint32_t(version),
 		nil, nil,
 		C.uint32_t(flags),
 		C.argon2_type(ctx.Mode))
