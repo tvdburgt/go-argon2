@@ -19,14 +19,14 @@ Make sure the library files are available in `/usr`:
 ```
 $ git clone https://github.com/P-H-C/phc-winner-argon2.git argon2
 $ cd argon2
-$ git checkout tags/20171227
+$ git checkout tags/20171227 # switch to latest release
 $ sudo make install
 ```
 
 Test everything is installed correctly:
 
 ```
-$ cd $GOCODE/src/github.com/tvdburgt/go-argon2/
+$ cd $GOPATH/src/github.com/tvdburgt/go-argon2/
 $ go test
 ```
 
